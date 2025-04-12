@@ -1,0 +1,332 @@
+openapi: 3.0.0
+info:
+  title: WeLocal Polls Service API
+  description: API для управления опросами и голосованиями
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:10414
+    description: Локальный сервер разработки
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Poll:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        creatorId:
+          type: string
+          format: uuid
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              text:
+                type: string
+              votes:
+                type: integer
+        status:
+          type: string
+          enum: [ACTIVE, CLOSED, DRAFT]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        isPublic:
+          type: boolean
+        allowMultipleVotes:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Vote:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pollId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        optionId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+paths:
+  /polls:
+    get:
+      summary: Получение списка опросов
+      tags:
+        - Опросы
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ACTIVE, CLOSED, DRAFT]
+        - in: query
+          name: isPublic
+          schema:
+            type: boolean
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Успешное получение списка опросов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Poll'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      summary: Создание нового опроса
+      tags:
+        - Опросы
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - options
+                - startDate
+                - endDate
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - text
+                    properties:
+                      text:
+                        type: string
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+                isPublic:
+                  type: boolean
+                  default: true
+                allowMultipleVotes:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: Опрос успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poll'
+        '400':
+          description: Неверные данные
+        '401':
+          description: Не авторизован
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /polls/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Получение информации об опросе
+      tags:
+        - Опросы
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Успешное получение информации об опросе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poll'
+        '404':
+          description: Опрос не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      summary: Обновление информации об опросе
+      tags:
+        - Опросы
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      text:
+                        type: string
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+                isPublic:
+                  type: boolean
+                allowMultipleVotes:
+                  type: boolean
+                status:
+                  type: string
+                  enum: [ACTIVE, CLOSED, DRAFT]
+      responses:
+        '200':
+          description: Опрос успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poll'
+        '400':
+          description: Неверные данные
+        '401':
+          description: Не авторизован
+        '404':
+          description: Опрос не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+    delete:
+      summary: Удаление опроса
+      tags:
+        - Опросы
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Опрос успешно удален
+        '401':
+          description: Не авторизован
+        '404':
+          description: Опрос не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /polls/{id}/vote:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Голосование в опросе
+      tags:
+        - Опросы
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - optionId
+              properties:
+                optionId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Голос успешно учтен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vote'
+        '400':
+          description: Неверные данные
+        '401':
+          description: Не авторизован
+        '404':
+          description: Опрос или вариант ответа не найден
+        '409':
+          description: Опрос закрыт или уже проголосовано
+        '500':
+          description: Внутренняя ошибка сервера 
